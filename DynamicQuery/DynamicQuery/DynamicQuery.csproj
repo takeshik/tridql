@@ -8,7 +8,7 @@
     <ProjectGuid>{AB086695-AAC0-428C-AC35-A6DC28A578D9}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DynamicQuery</RootNamespace>
+    <RootNamespace>System.Linq.Dynamic</RootNamespace>
     <AssemblyName>DynamicQuery</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
