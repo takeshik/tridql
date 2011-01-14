@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Linq;
 using System.Linq.Expressions;
@@ -1314,7 +1315,7 @@ namespace System.Linq.Dynamic
             this.NextToken();
             Expression[] args = this.ParseArgumentList();
             MethodBase method;
-            if (this.FindMethod(lambda.Type, "Invoke", false, args, out method) != 1)
+            if (this.FindMethod(lambda.Type, "Invoke", lambda, args, out method) != 1)
             {
                 throw this.ParseError(errorPos, Res.ArgsIncompatibleWithLambda);
             }
@@ -1406,7 +1407,7 @@ namespace System.Linq.Dynamic
                 }
                 Expression[] args = this.ParseArgumentList();
                 MethodBase mb;
-                switch (this.FindMethod(type, id, instance == null, args, out mb))
+                switch (this.FindMethod(type, id, instance, args, out mb))
                 {
                     case 0:
                         throw this.ParseError(errorPos, Res.NoApplicableMethod,
@@ -1422,7 +1423,23 @@ namespace System.Linq.Dynamic
                             throw this.ParseError(errorPos, Res.MethodIsVoid,
                                 id, GetTypeName(method.DeclaringType));
                         }
-                        return Expression.Call(instance, method, args);
+                        if (method.IsGenericMethodDefinition)
+                        {
+                            Type thisArgType = method.GetParameters().First().ParameterType;
+                            // if the method like Method<T>(Something<T> arg)
+                            if (method.GetGenericArguments().First() == thisArgType.GetGenericArguments().First())
+                            {
+                                method = method.MakeGenericMethod(new Type[] {
+                                    GetAssignableTypes(instance.Type)
+                                        .Single(t => GetRealDefinitionType(t) == GetRealDefinitionType(thisArgType))
+                                        .GetGenericArguments()
+                                        .First()
+                                });
+                            }
+                        }
+                        return IsExtensionMethod(method)
+                            ? Expression.Call(null, method, new Expression[] { instance, }.Concat(args))
+                            : Expression.Call(instance, method, args);
                     default:
                         throw this.ParseError(errorPos, Res.AmbiguousMethodInvocation,
                             id, GetTypeName(type));
@@ -1471,7 +1488,7 @@ namespace System.Linq.Dynamic
             Expression[] args = this.ParseArgumentList();
             this.it = outerIt;
             MethodBase signature;
-            if (this.FindMethod(typeof(IEnumerableSignatures), methodName, false, args, out signature) != 1)
+            if (this.FindMethod(typeof(IEnumerableSignatures), methodName, instance, args, out signature) != 1)
             {
                 throw this.ParseError(errorPos, Res.NoApplicableAggregate, methodName);
             }
@@ -1629,7 +1646,7 @@ namespace System.Linq.Dynamic
         {
             Expression[] args = new Expression[] { expr };
             MethodBase method;
-            if (this.FindMethod(signatures, "F", false, args, out method) != 1)
+            if (this.FindMethod(signatures, "F", expr, args, out method) != 1)
             {
                 throw this.ParseError(errorPos, Res.IncompatibleOperand,
                                  opName, GetTypeName(args[0].Type));
@@ -1641,7 +1658,7 @@ namespace System.Linq.Dynamic
         {
             Expression[] args = new Expression[] { left, right, };
             MethodBase method;
-            if (this.FindMethod(signatures, "F", false, args, out method) != 1)
+            if (this.FindMethod(signatures, "F", left, args, out method) != 1)
             {
                 throw this.IncompatibleOperandsError(opName, left, right, errorPos);
             }
@@ -1666,22 +1683,49 @@ namespace System.Linq.Dynamic
                 .FirstOrDefault();
         }
 
-        private Int32 FindMethod(Type type, String methodName, Boolean staticAccess, Expression[] args, out MethodBase method)
+        private Int32 FindMethod(Type type, String methodName, Expression instance, Expression[] args, bool searchExtensionMethods, out MethodBase method)
         {
             BindingFlags flags = BindingFlags.Public | BindingFlags.DeclaredOnly |
-                (staticAccess ? BindingFlags.Static : BindingFlags.Instance);
+                (instance == null ? BindingFlags.Static : BindingFlags.Instance);
             foreach (MemberInfo[] members in SelfAndBaseTypes(type)
                 .Select(t => t.FindMembers(MemberTypes.Method, flags, Type.FilterNameIgnoreCase, methodName))
             )
             {
-                Int32 count = this.FindBestMethod(members.Cast<MethodBase>(), args, out method);
+                Int32 count = this.FindBestMethod(
+                    (searchExtensionMethods
+                        ? members.Where(m => IsExtensionMethod((MethodBase) m))
+                        : members
+                    ).Cast<MethodBase>(),
+                    args, out method
+                );
                 if (count != 0)
                 {
                     return count;
                 }
             }
+            if (!(instance == null || searchExtensionMethods))
+            {
+                foreach (Type t in predefinedTypes.Where(t => Attribute.IsDefined(t, typeof(ExtensionAttribute))))
+                {
+                    int count = this.FindMethod(t, methodName, null, new Expression[] { instance, }.Concat(args).ToArray(), true, out method);
+                    if (count != 0)
+                    {
+                        return count;
+                    }
+                }
+            }
             method = null;
             return 0;
+        }
+
+        private static Boolean IsExtensionMethod(MethodBase m)
+        {
+            return m.GetCustomAttributes(typeof(ExtensionAttribute), false).Any();
+        }
+
+        private Int32 FindMethod(Type type, string methodName, Expression instance, Expression[] args, out MethodBase method)
+        {
+            return this.FindMethod(type, methodName, instance, args, false, out method);
         }
 
         private Int32 FindIndexer(Type type, Expression[] args, out MethodBase method)
@@ -1967,7 +2011,9 @@ namespace System.Linq.Dynamic
             }
             if (!target.IsValueType)
             {
-                return target.IsAssignableFrom(source);
+                return GetAssignableTypes(source)
+                    .Select(GetRealDefinitionType)
+                    .Contains(GetRealDefinitionType(target));
             }
             Type st = GetNonNullableType(source);
             Type tt = GetNonNullableType(target);
@@ -2093,6 +2139,30 @@ namespace System.Linq.Dynamic
                     break;
             }
             return false;
+        }
+
+        private static IEnumerable<Type> GetAssignableTypes(Type t)
+        {
+            do
+            {
+                yield return t;
+                foreach (Type i in t.GetInterfaces())
+                {
+                    yield return i;
+                }
+            } while ((t = t.BaseType) != null);
+        }
+
+        private static Type GetRealDefinitionType(Type t)
+        {
+            if (t.IsGenericType)
+            {
+                while (t != t.GetGenericTypeDefinition())
+                {
+                    t = t.GetGenericTypeDefinition();
+                }
+            }
+            return t;
         }
 
         private static Boolean IsBetterThan(Expression[] args, MethodData m1, MethodData m2)
