@@ -1,0 +1,11 @@
+/_ReSharper.*/
+/dist/
+/report/
+/TestResults/
+/*.cache
+/*.suo
+/*.user
+bin/
+obj/
+ThisAssembly.cs
+*.InstallLog
