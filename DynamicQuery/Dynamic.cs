@@ -1025,7 +1025,7 @@ namespace System.Linq.Dynamic
                         expr = ParseElementAccess(expr);
                         break;
                     default:
-                        break;
+                        return expr;
                 }
             }
         }
