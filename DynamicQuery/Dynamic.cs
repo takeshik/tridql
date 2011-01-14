@@ -600,38 +600,6 @@ namespace System.Linq.Dynamic
             void F(Nullable<Boolean> x);
         }
 
-        interface IEnumerableSignatures
-        {
-            void Where(Boolean predicate);
-            void Any();
-            void Any(Boolean predicate);
-            void All(Boolean predicate);
-            void Count();
-            void Count(Boolean predicate);
-            void Min(Object selector);
-            void Max(Object selector);
-            void Sum(Int32 selector);
-            void Sum(Nullable<Int32> selector);
-            void Sum(Int64 selector);
-            void Sum(Nullable<Int64> selector);
-            void Sum(Single selector);
-            void Sum(Nullable<Single> selector);
-            void Sum(Double selector);
-            void Sum(Nullable<Double> selector);
-            void Sum(Decimal selector);
-            void Sum(Nullable<Decimal> selector);
-            void Average(Int32 selector);
-            void Average(Nullable<Int32> selector);
-            void Average(Int64 selector);
-            void Average(Nullable<Int64> selector);
-            void Average(Single selector);
-            void Average(Nullable<Single> selector);
-            void Average(Double selector);
-            void Average(Nullable<Double> selector);
-            void Average(Decimal selector);
-            void Average(Nullable<Decimal> selector);
-        }
-
         static readonly Type[] predefinedTypes = {
             typeof(Object),
             typeof(Boolean),
@@ -1396,15 +1364,8 @@ namespace System.Linq.Dynamic
             this.NextToken();
             if (this.token.id == TokenId.OpenParen)
             {
-                if (instance != null && type != typeof(String))
-                {
-                    Type enumerableType = FindGenericType(typeof(IEnumerable<>), type);
-                    if (enumerableType != null)
-                    {
-                        Type elementType = enumerableType.GetGenericArguments()[0];
-                        return this.ParseAggregate(instance, elementType, id, errorPos);
-                    }
-                }
+                // ParseAggregate method ("A subset of the Standard Query Operators" in document) is disused.
+
                 Expression[] args = this.ParseArgumentList();
                 MethodBase mb;
                 switch (this.FindMethod(type, id, instance, args, out mb))
@@ -1437,6 +1398,19 @@ namespace System.Linq.Dynamic
                                 });
                             }
                         }
+                        ParameterInfo[] parameters = method.GetParameters();
+                        if (Attribute.IsDefined(parameters.Last(), typeof(ParamArrayAttribute)) &&
+                            parameters.Length != args.Length
+                        )
+                        {
+                            args = args.Take(parameters.Length - 1).Concat(new Expression[]
+                            {
+                                Expression.NewArrayInit(
+                                    parameters.Last().ParameterType.GetElementType(),
+                                    args.Skip(parameters.Length - 1)
+                                ),
+                            }).ToArray();
+                        }
                         return IsExtensionMethod(method)
                             ? Expression.Call(null, method, new Expression[] { instance, }.Concat(args))
                             : Expression.Call(instance, method, args);
@@ -1454,57 +1428,6 @@ namespace System.Linq.Dynamic
             return member is PropertyInfo
                 ? Expression.Property(instance, (PropertyInfo) member)
                 : Expression.Field(instance, (FieldInfo) member);
-        }
-
-        private static Type FindGenericType(Type generic, Type type)
-        {
-            while (type != null && type != typeof(Object))
-            {
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == generic)
-                {
-                    return type;
-                }
-                if (generic.IsInterface)
-                {
-                    foreach (Type intfType in type.GetInterfaces())
-                    {
-                        Type found = FindGenericType(generic, intfType);
-                        if (found != null)
-                        {
-                            return found;
-                        }
-                    }
-                }
-                type = type.BaseType;
-            }
-            return null;
-        }
-
-        private Expression ParseAggregate(Expression instance, Type elementType, String methodName, Int32 errorPos)
-        {
-            ParameterExpression outerIt = this.it;
-            ParameterExpression innerIt = Expression.Parameter(elementType, "");
-            this.it = innerIt;
-            Expression[] args = this.ParseArgumentList();
-            this.it = outerIt;
-            MethodBase signature;
-            if (this.FindMethod(typeof(IEnumerableSignatures), methodName, instance, args, out signature) != 1)
-            {
-                throw this.ParseError(errorPos, Res.NoApplicableAggregate, methodName);
-            }
-            Type[] typeArgs;
-            if (signature.Name == "Min" || signature.Name == "Max")
-            {
-                typeArgs = new Type[] { elementType, args[0].Type };
-            }
-            else
-            {
-                typeArgs = new Type[] { elementType };
-            }
-            args = args.Length == 0
-                ? new Expression[] { instance, }
-                : new Expression[] { instance, Expression.Lambda(args[0], innerIt), };
-            return Expression.Call(typeof(Enumerable), signature.Name, typeArgs, args);
         }
 
         private Expression[] ParseArgumentList()
@@ -1823,7 +1746,9 @@ namespace System.Linq.Dynamic
 
         private Boolean IsApplicable(MethodData method, Expression[] args)
         {
-            if (method.Parameters.Length != args.Length)
+            if (!(method.Parameters.Length == args.Length ||
+                Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute)))
+            )
             {
                 return false;
             }
