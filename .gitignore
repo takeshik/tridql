@@ -1,7 +1,7 @@
-/_ReSharper.*/
+_ReSharper.*/
 /dist/
 /report/
-/TestResults/
+TestResults/
 /*.cache
 /*.suo
 /*.user
