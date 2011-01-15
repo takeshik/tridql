@@ -1,0 +1,34 @@
+h2. (Forked) DynamicQuery
+
+Copyright © 2011 Takeshi KIRIYA (aka takeshik), All rights reserved.
+This code is originally written by Microsoft Corporation.
+
+DynamicQuery, originally a sample code from Microsoft, is a library to do LINQ
+operations and to construct expression trees with string.
+You can download original DynamicQuery source code and document from:
+
+http://code.msdn.microsoft.com/cs2008samples
+
+This is forked version of DynamicQuery.
+
+h3. Added Features
+
+* Support to call extension methods, including LINQ methods
+* Support to call methods with "params" arguments
+* Add predefined types (Regex, Enumerable, etc.)
+
+h3. Removed Features
+
+* "Subset of the Standard Query Operators" (like "Orders.Any(Total >= 1000)") is removed
+since it conflicts with extension methods.
+
+h3. Planning Features
+
+* Add extension methods in DynamicQueryable class (string-expression querying operators)
+* Add Utility methods (Construct arrays, type objects, lambdas, etc., in code string)
+* Extend language features
+* And so on
+
+h3. Licensing
+
+This source code is licensed under the Microsoft Public License (Ms-PL), same as original code.
