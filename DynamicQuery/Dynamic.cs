@@ -9,6 +9,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace System.Linq.Dynamic
@@ -30,7 +31,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpression.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "Where",
@@ -50,7 +51,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("selector");
             }
-            LambdaExpression lambda = DynamicExpression.ParseLambda(source.ElementType, null, selector, values);
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "Select",
@@ -141,8 +142,8 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("elementSelector");
             }
-            LambdaExpression keyLambda = DynamicExpression.ParseLambda(source.ElementType, null, keySelector, values);
-            LambdaExpression elementLambda = DynamicExpression.ParseLambda(source.ElementType, null, elementSelector, values);
+            LambdaExpression keyLambda = DynamicExpressions.ParseLambda(source.ElementType, null, keySelector, values);
+            LambdaExpression elementLambda = DynamicExpressions.ParseLambda(source.ElementType, null, elementSelector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "GroupBy",
@@ -231,7 +232,7 @@ namespace System.Linq.Dynamic
 
     }
 
-    public static class DynamicExpression
+    public static class DynamicExpressions
     {
         public static Expression Parse(Type resultType, String expression, params Object[] values)
         {
@@ -600,7 +601,8 @@ namespace System.Linq.Dynamic
             void F(Nullable<Boolean> x);
         }
 
-        static readonly Type[] predefinedTypes = {
+        static readonly Type[] predefinedTypes = new Type[]
+        {
             typeof(Object),
             typeof(Boolean),
             typeof(Char),
@@ -620,7 +622,12 @@ namespace System.Linq.Dynamic
             typeof(TimeSpan),
             typeof(Guid),
             typeof(Math),
-            typeof(Convert)
+            typeof(Convert),
+            typeof(Tuple),
+            typeof(Regex),
+            typeof(DynamicQueryable),
+            typeof(Queryable),
+            typeof(Enumerable),
         };
 
         private static readonly Expression trueLiteral = Expression.Constant(true);
@@ -1268,7 +1275,7 @@ namespace System.Linq.Dynamic
             }
             this.ValidateToken(TokenId.CloseParen, Res.CloseParenOrCommaExpected);
             this.NextToken();
-            Type type = DynamicExpression.CreateClass(properties);
+            Type type = DynamicExpressions.CreateClass(properties);
             MemberBinding[] bindings = new MemberBinding[properties.Count];
             for (Int32 i = 0; i < bindings.Length; i++)
             {
