@@ -1658,10 +1658,10 @@ namespace System.Linq.Dynamic
                 MemberInfo[] members = t.GetDefaultMembers();
                 if (members.Length != 0)
                 {
-                    IEnumerable<MethodBase> methods = members.
-                        OfType<PropertyInfo>().
-                        Select(p => (MethodBase) p.GetGetMethod()).
-                        Where(m => m != null);
+                    IEnumerable<MethodBase> methods = members
+                        .OfType<PropertyInfo>()
+                        .Select(p => (MethodBase) p.GetGetMethod())
+                        .Where(m => m != null);
                     Int32 count = this.FindBestMethod(methods, args, out method);
                     if (count != 0)
                     {
@@ -1714,14 +1714,14 @@ namespace System.Linq.Dynamic
 
         private Int32 FindBestMethod(IEnumerable<MethodBase> methods, Expression[] args, out MethodBase method)
         {
-            MethodData[] applicable = methods.
-                Select(m => new MethodData()
+            MethodData[] applicable = methods
+                .Select(m => new MethodData()
                 {
                     MethodBase = m,
                     Parameters = m.GetParameters()
-                }).
-                Where(m => this.IsApplicable(m, args)).
-                ToArray();
+                })
+                .Where(m => this.IsApplicable(m, args))
+                .ToArray();
             if (applicable.Length > 1)
             {
                 applicable = applicable
