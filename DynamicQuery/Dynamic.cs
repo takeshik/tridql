@@ -16,12 +16,63 @@ namespace System.Linq.Dynamic
 {
     public static class DynamicQueryable
     {
-        public static IQueryable<T> Where<T>(this IQueryable<T> source, String predicate, params Object[] values)
+        public static IQueryable Execute(this IQueryable source, String func, params Object[] values)
         {
-            return (IQueryable<T>) Where((IQueryable) source, predicate, values);
+            return Execute<IQueryable>(source, func, values);
         }
 
-        public static IQueryable Where(this IQueryable source, String predicate, params Object[] values)
+        public static T Execute<T>(this IQueryable source, String func, params Object[] values)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            if (func == null)
+            {
+                throw new ArgumentNullException("func");
+            }
+            return DynamicExpressions.ParseLambda<IQueryable, T>(func, values).Compile()(source);
+        }
+
+        public static IQueryable Aggregate(this IQueryable source, String func, params Object[] values)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            if (func == null)
+            {
+                throw new ArgumentNullException("func");
+            }
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(new ParameterExpression[]
+            {
+                Expression.Parameter(source.ElementType, "a"),
+                Expression.Parameter(source.ElementType, "e"),
+            }, null, func, values);
+            return source.Provider.CreateQuery(
+                Expression.Call(
+                    typeof(Queryable), "Aggregate",
+                    new Type[] { source.ElementType, lambda.Body.Type, },
+                    source.Expression, Expression.Quote(lambda)
+                )
+            );
+        }
+
+        public static Boolean Any(this IQueryable source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            return source.Provider.Execute<Boolean>(
+                Expression.Call(
+                    typeof(Queryable), "Any",
+                    new Type[] { source.ElementType, }, source.Expression
+                )
+            );
+        }
+
+        public static Boolean Any(this IQueryable source, String predicate, params Object[] values)
         {
             if (source == null)
             {
@@ -32,31 +83,167 @@ namespace System.Linq.Dynamic
                 throw new ArgumentNullException("predicate");
             }
             LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
-            return source.Provider.CreateQuery(
+            return source.Provider.Execute<Boolean>(
                 Expression.Call(
-                    typeof(Queryable), "Where",
+                    typeof(Queryable), "Any",
                     new Type[] { source.ElementType, },
                     source.Expression, Expression.Quote(lambda)
                 )
             );
         }
 
-        public static IQueryable Select(this IQueryable source, String selector, params Object[] values)
+        public static Boolean All(this IQueryable source)
         {
             if (source == null)
             {
                 throw new ArgumentNullException("source");
             }
-            if (selector == null)
+            return source.Provider.Execute<Boolean>(
+                Expression.Call(
+                    typeof(Queryable), "All",
+                    new Type[] { source.ElementType, }, source.Expression
+                )
+            );
+        }
+
+        public static Boolean All(this IQueryable source, String predicate, params Object[] values)
+        {
+            if (source == null)
             {
-                throw new ArgumentNullException("selector");
+                throw new ArgumentNullException("source");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
+            if (predicate == null)
+            {
+                throw new ArgumentNullException("predicate");
+            }
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            return source.Provider.Execute<Boolean>(
+                Expression.Call(
+                    typeof(Queryable), "All",
+                    new Type[] { source.ElementType, },
+                    source.Expression, Expression.Quote(lambda)
+                )
+            );
+        }
+
+        public static ValueType Average(this IQueryable source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            return source.Provider.Execute<ValueType>(
+                Expression.Call(
+                    typeof(Queryable), "Average",
+                    new Type[] { source.ElementType, }, source.Expression
+                )
+            );
+        }
+
+        // Average<T>(Func<T, TValue>)
+
+        // Cast<TResult>()
+
+        public static IQueryable<TSource> Concat<TSource>(this IQueryable<TSource> first, String second, params Object[] values)
+        {
+            return (IQueryable<TSource>) Concat((IQueryable) first, second, values);
+        }
+
+        public static IQueryable Concat(this IQueryable first, String second, params Object[] values)
+        {
+            if (first == null)
+            {
+                throw new ArgumentNullException("first");
+            }
+            if (second == null)
+            {
+                throw new ArgumentNullException("second");
+            }
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(first.ElementType, typeof(Boolean), second, values);
+            return first.Provider.CreateQuery(
+                Expression.Call(
+                    typeof(Queryable), "Concat",
+                    new Type[] { first.ElementType, },
+                    first.Expression, Expression.Quote(lambda)
+                )
+            );
+        }
+
+        public static Boolean Contains(this IQueryable source, Object item, params Object[] values)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            if (item == null)
+            {
+                throw new ArgumentNullException("item");
+            }
+            return source.Provider.Execute<Boolean>(
+                Expression.Call(
+                    typeof(Queryable), "Contains",
+                    new Type[] { source.ElementType, },
+                    source.Expression, Expression.Constant(item)
+                )
+            );
+
+        }
+
+        public static Int32 Count(this IQueryable source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            return (Int32) source.Provider.Execute(
+                Expression.Call(
+                    typeof(Queryable), "Count",
+                    new Type[] { source.ElementType, }, source.Expression
+                )
+            );
+        }
+
+        public static Int32 Count(this IQueryable source, String predicate, params Object[] values)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            if (predicate == null)
+            {
+                throw new ArgumentNullException("predicate");
+            }
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            return source.Provider.Execute<Int32>(
+                Expression.Call(
+                    typeof(Queryable), "Count",
+                    new Type[] { source.ElementType, },
+                    source.Expression, Expression.Quote(lambda)
+                )
+            );
+        }
+
+        public static IQueryable GroupBy(this IQueryable source, String keySelector, String elementSelector, params Object[] values)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            if (keySelector == null)
+            {
+                throw new ArgumentNullException("keySelector");
+            }
+            if (elementSelector == null)
+            {
+                throw new ArgumentNullException("elementSelector");
+            }
+            LambdaExpression keyLambda = DynamicExpressions.ParseLambda(source.ElementType, null, keySelector, values);
+            LambdaExpression elementLambda = DynamicExpressions.ParseLambda(source.ElementType, null, elementSelector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
-                    typeof(Queryable), "Select",
-                    new Type[] { source.ElementType, lambda.Body.Type, },
-                    source.Expression, Expression.Quote(lambda)
+                    typeof(Queryable), "GroupBy",
+                    new Type[] { source.ElementType, keyLambda.Body.Type, elementLambda.Body.Type, },
+                    source.Expression, Expression.Quote(keyLambda), Expression.Quote(elementLambda)
                 )
             );
         }
@@ -98,17 +285,22 @@ namespace System.Linq.Dynamic
             return source.Provider.CreateQuery(queryExpr);
         }
 
-        public static IQueryable Take(this IQueryable source, Int32 count)
+        public static IQueryable Select(this IQueryable source, String selector, params Object[] values)
         {
             if (source == null)
             {
                 throw new ArgumentNullException("source");
             }
+            if (selector == null)
+            {
+                throw new ArgumentNullException("selector");
+            }
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
-                    typeof(Queryable), "Take",
-                    new Type[] { source.ElementType, },
-                    source.Expression, Expression.Constant(count)
+                    typeof(Queryable), "Select",
+                    new Type[] { source.ElementType, lambda.Body.Type, },
+                    source.Expression, Expression.Quote(lambda)
                 )
             );
         }
@@ -128,55 +320,42 @@ namespace System.Linq.Dynamic
             );
         }
 
-        public static IQueryable GroupBy(this IQueryable source, String keySelector, String elementSelector, params Object[] values)
+        public static IQueryable Take(this IQueryable source, Int32 count)
         {
             if (source == null)
             {
                 throw new ArgumentNullException("source");
             }
-            if (keySelector == null)
-            {
-                throw new ArgumentNullException("keySelector");
-            }
-            if (elementSelector == null)
-            {
-                throw new ArgumentNullException("elementSelector");
-            }
-            LambdaExpression keyLambda = DynamicExpressions.ParseLambda(source.ElementType, null, keySelector, values);
-            LambdaExpression elementLambda = DynamicExpressions.ParseLambda(source.ElementType, null, elementSelector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
-                    typeof(Queryable), "GroupBy",
-                    new Type[] { source.ElementType, keyLambda.Body.Type, elementLambda.Body.Type, },
-                    source.Expression, Expression.Quote(keyLambda), Expression.Quote(elementLambda)
+                    typeof(Queryable), "Take",
+                    new Type[] { source.ElementType, },
+                    source.Expression, Expression.Constant(count)
                 )
             );
         }
 
-        public static Boolean Any(this IQueryable source)
+        public static IQueryable<T> Where<T>(this IQueryable<T> source, String predicate, params Object[] values)
+        {
+            return (IQueryable<T>) Where((IQueryable) source, predicate, values);
+        }
+
+        public static IQueryable Where(this IQueryable source, String predicate, params Object[] values)
         {
             if (source == null)
             {
                 throw new ArgumentNullException("source");
             }
-            return (Boolean) source.Provider.Execute(
-                Expression.Call(
-                    typeof(Queryable), "Any",
-                    new Type[] { source.ElementType, }, source.Expression
-                )
-            );
-        }
-
-        public static Int32 Count(this IQueryable source)
-        {
-            if (source == null)
+            if (predicate == null)
             {
-                throw new ArgumentNullException("source");
+                throw new ArgumentNullException("predicate");
             }
-            return (Int32) source.Provider.Execute(
+            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            return source.Provider.CreateQuery(
                 Expression.Call(
-                    typeof(Queryable), "Count",
-                    new Type[] { source.ElementType, }, source.Expression
+                    typeof(Queryable), "Where",
+                    new Type[] { source.ElementType, },
+                    source.Expression, Expression.Quote(lambda)
                 )
             );
         }
