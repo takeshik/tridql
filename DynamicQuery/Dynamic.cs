@@ -1773,12 +1773,10 @@ namespace System.Linq.Dynamic
             }
             if (quote == '\'')
             {
-                if (s.Length != 1)
-                {
-                    throw this.ParseError(Res.InvalidCharacterLiteral);
-                }
+                // Treat quoting token ' as " and create Char literal only if quote is ' and literal
+                // length is 1.
                 this.NextToken();
-                return this.CreateLiteral(s[0], s);
+                return this.CreateLiteral(quote == '\'' && s.Length == 1 ? (Object) s[0] : s, s);
             }
             this.NextToken();
             return this.CreateLiteral(s, s);
