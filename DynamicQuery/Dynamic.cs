@@ -1917,9 +1917,21 @@ namespace System.Linq.Dynamic
                 .ToArray();
             if (applicable.Length > 1)
             {
-                applicable = applicable
-                    .Where(m => applicable.All(n => m == n || IsBetterThan(args, m, n)))
-                    .ToArray();
+                // All varargs-containing methods was handled as suitable in IsApplicable method
+                // however parameter count is not matched.
+                if (applicable.Any(HasVarArgsParameter))
+                {
+                    // There is more suitable method without varargs
+                    applicable = applicable
+                        .Where(m => !HasVarArgsParameter(m))
+                        .ToArray();
+                }
+                else
+                {
+                    applicable = applicable
+                        .Where(m => applicable.All(n => m == n || IsBetterThan(args, m, n)))
+                        .ToArray();
+                }
             }
             if (applicable.Length == 1)
             {
@@ -1939,14 +1951,7 @@ namespace System.Linq.Dynamic
 
         private Boolean IsApplicable(MethodData method, Expression[] args)
         {
-            // NOTE: Haphazard way to escape if (applicable.Length > 1) in FindBestMethod method
-            if (method.Parameters.Length != args.Length)
-            {
-                return false;
-            }
-            if (!(method.Parameters.Length == args.Length ||
-                Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute)))
-            )
+            if (!(method.Parameters.Length == args.Length || HasVarArgsParameter(method)))
             {
                 return false;
             }
@@ -1967,6 +1972,11 @@ namespace System.Linq.Dynamic
             }
             method.Args = promotedArgs;
             return true;
+        }
+
+        private static Boolean HasVarArgsParameter(MethodData method)
+        {
+            return Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute));
         }
 
         private Expression PromoteExpression(Expression expr, Type type, Boolean exact)
