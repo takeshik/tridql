@@ -34,7 +34,7 @@ namespace System.Linq.Dynamic
             return DynamicExpressions.ParseLambda<IQueryable, T>(func, values).Compile()(source);
         }
 
-        public static IQueryable Aggregate(this IQueryable source, String func, params Object[] values)
+        public static Object Aggregate(this IQueryable source, String func, params Object[] values)
         {
             if (source == null)
             {
@@ -49,10 +49,10 @@ namespace System.Linq.Dynamic
                 Expression.Parameter(source.ElementType, "a"),
                 Expression.Parameter(source.ElementType, "e"),
             }, null, func, values);
-            return source.Provider.CreateQuery(
+            return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "Aggregate",
-                    new Type[] { source.ElementType, lambda.Body.Type, },
+                    new Type[] { source.ElementType, },
                     source.Expression, Expression.Quote(lambda)
                 )
             );
