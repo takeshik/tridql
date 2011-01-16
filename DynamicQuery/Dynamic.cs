@@ -1939,6 +1939,11 @@ namespace System.Linq.Dynamic
 
         private Boolean IsApplicable(MethodData method, Expression[] args)
         {
+            // NOTE: Haphazard way to escape if (applicable.Length > 1) in FindBestMethod method
+            if (method.Parameters.Length != args.Length)
+            {
+                return false;
+            }
             if (!(method.Parameters.Length == args.Length ||
                 Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute)))
             )
