@@ -408,7 +408,6 @@ namespace System.Linq.Dynamic
             this.Name = name;
             this.Type = type;
         }
-
     }
 
     public static class DynamicExpressions
@@ -662,14 +661,16 @@ namespace System.Linq.Dynamic
 
     internal class ExpressionParser
     {
-        internal struct Token
+        #region Nested Types
+
+        private struct Token
         {
             public TokenId id;
             public String text;
             public Int32 pos;
         }
 
-        internal enum TokenId
+        private enum TokenId
         {
             Unknown = 0,
             End,
@@ -705,13 +706,13 @@ namespace System.Linq.Dynamic
             DoubleBar
         }
 
-        interface ILogicalSignatures
+        private interface ILogicalSignatures
         {
             void F(Boolean x, Boolean y);
             void F(Nullable<Boolean> x, Nullable<Boolean> y);
         }
 
-        interface IArithmeticSignatures
+        private interface IArithmeticSignatures
         {
             void F(Int32 x, Int32 y);
             void F(UInt32 x, UInt32 y);
@@ -729,7 +730,8 @@ namespace System.Linq.Dynamic
             void F(Nullable<Decimal> x, Nullable<Decimal> y);
         }
 
-        interface IRelationalSignatures : IArithmeticSignatures
+        private interface IRelationalSignatures
+            : IArithmeticSignatures
         {
             void F(String x, String y);
             void F(Char x, Char y);
@@ -740,13 +742,15 @@ namespace System.Linq.Dynamic
             void F(Nullable<TimeSpan> x, Nullable<TimeSpan> y);
         }
 
-        interface IEqualitySignatures : IRelationalSignatures
+        private interface IEqualitySignatures
+            : IRelationalSignatures
         {
             void F(Boolean x, Boolean y);
             void F(Nullable<Boolean> x, Nullable<Boolean> y);
         }
 
-        interface IAddSignatures : IArithmeticSignatures
+        private interface IAddSignatures
+            : IArithmeticSignatures
         {
             void F(DateTime x, TimeSpan y);
             void F(TimeSpan x, TimeSpan y);
@@ -754,13 +758,14 @@ namespace System.Linq.Dynamic
             void F(Nullable<TimeSpan> x, Nullable<TimeSpan> y);
         }
 
-        interface ISubtractSignatures : IAddSignatures
+        private interface ISubtractSignatures
+            : IAddSignatures
         {
             void F(DateTime x, DateTime y);
             void F(Nullable<DateTime> x, Nullable<DateTime> y);
         }
 
-        interface INegationSignatures
+        private interface INegationSignatures
         {
             void F(Int32 x);
             void F(Int64 x);
@@ -774,13 +779,15 @@ namespace System.Linq.Dynamic
             void F(Nullable<Decimal> x);
         }
 
-        interface INotSignatures
+        private interface INotSignatures
         {
             void F(Boolean x);
             void F(Nullable<Boolean> x);
         }
 
-        static readonly Type[] predefinedTypes = new Type[]
+        #endregion
+
+        private static readonly Type[] predefinedTypes = new Type[]
         {
             typeof(Object),
             typeof(Boolean),
@@ -2719,7 +2726,7 @@ namespace System.Linq.Dynamic
         }
     }
 
-    static class Res
+    internal static class Res
     {
         public const String DuplicateIdentifier = "The identifier '{0}' was defined more than once";
         public const String ExpressionTypeMismatch = "Expression of type '{0}' expected";
