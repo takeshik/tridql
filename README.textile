@@ -11,23 +11,51 @@ http://code.msdn.microsoft.com/cs2008samples
 
 This is forked version of DynamicQuery.
 
+h3. Samples
+
+Below three expressions are the same meanings.
+
+<pre>
+// DynamicQuery (Execute method)
+Enumerable.Range(0, 100).AsQueryable()
+    .Execute("it.Zip(Enumerable.Range(0, 100).Reverse(), 'x * y').Distinct(). OrderBy('it desc')");
+
+// DynamicQuery (Query operators)
+Enumerable.Range(0, 100).AsQueryable()
+    .Zip(Enumerable.Range(0, 100).Reverse(), "x + y")
+    .Distinct()
+    .OrderBy("it desc");
+
+// Normal LINQ code
+Enumerable.Range(0, 100)
+    .Zip(Enumerable.Range(0, 100), (x, y) => x * y)
+    .Reverse()
+    .Distinct()
+    .OrderByDescending(n => n);
+</pre>
+
 h3. Added Features
 
-* Support to call extension methods, including LINQ methods
-* Support to call methods with "params" arguments
-* Add predefined types (Regex, Enumerable, etc.)
+* Implement most standard query operators.
+* Support to call extension methods, including LINQ methods.
+* Support to call methods with "params" arguments.
+* Add predefined types (Regex, Enumerable, etc.).
+* Expand the expression of string literals, you can describe strings like @'this is string'@.
+Character literals are still describable, if inner text in @'...'@ is only one character.
+* Rename @DynamicExpression@ class to @DynamicExpressions@, since it conflicts with
+@System.Linq.Expressions.DynamicExpression@.
 
 h3. Removed Features
 
-* "Subset of the Standard Query Operators" (like "Orders.Any(Total >= 1000)") is removed
+* "Subset of the Standard Query Operators" (like @Orders.Any(Total >= 1000)@) is removed
 since it conflicts with extension methods.
 
 h3. Planning Features
 
-* Add extension methods in DynamicQueryable class (string-expression querying operators)
-* Add Utility methods (Construct arrays, type objects, lambdas, etc., in code string)
-* Extend language features
-* And so on
+* Add Utility methods (Construct arrays, type objects, lambdas, etc., in code string).
+* Extend language features.
+* Support @dynamic@ objects.
+* And so on.
 
 h3. Licensing
 
