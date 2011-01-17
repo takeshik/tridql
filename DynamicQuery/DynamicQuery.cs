@@ -1333,34 +1333,7 @@ namespace System.Linq.Dynamic
 
         #endregion
 
-        private static readonly Type[] predefinedTypes = new Type[]
-        {
-            typeof(Object),
-            typeof(Boolean),
-            typeof(Char),
-            typeof(String),
-            typeof(SByte),
-            typeof(Byte),
-            typeof(Int16),
-            typeof(UInt16),
-            typeof(Int32),
-            typeof(UInt32),
-            typeof(Int64),
-            typeof(UInt64),
-            typeof(Single),
-            typeof(Double),
-            typeof(Decimal),
-            typeof(DateTime),
-            typeof(TimeSpan),
-            typeof(Guid),
-            typeof(Math),
-            typeof(Convert),
-            typeof(Tuple),
-            typeof(Regex),
-            typeof(DynamicQueryable),
-            typeof(Queryable),
-            typeof(Enumerable),
-        };
+        private HashSet<Type> predefinedTypes;
 
         private static readonly Expression trueLiteral = Expression.Constant(true);
         private static readonly Expression falseLiteral = Expression.Constant(false);
@@ -1437,6 +1410,52 @@ namespace System.Linq.Dynamic
                     this.AddSymbol("@" + i.ToString(CultureInfo.InvariantCulture), value);
                 }
             }
+
+            this.AddSymbol("$", this.externals);
+            if (this.externals == null)
+            {
+                this.externals = new Dictionary<String, Object>();
+            }
+
+            HashSet<Type> imports = new HashSet<Type>(new Type[]
+            {
+                #region Predefined Types
+                typeof(Object),
+                typeof(Boolean),
+                typeof(Char),
+                typeof(String),
+                typeof(SByte),
+                typeof(Byte),
+                typeof(Int16),
+                typeof(UInt16),
+                typeof(Int32),
+                typeof(UInt32),
+                typeof(Int64),
+                typeof(UInt64),
+                typeof(Single),
+                typeof(Double),
+                typeof(Decimal),
+                typeof(DateTime),
+                typeof(TimeSpan),
+                typeof(Guid),
+                typeof(Math),
+                typeof(Convert),
+                typeof(Tuple),
+                typeof(Regex),
+                typeof(DynamicQueryable),
+                typeof(Queryable),
+                typeof(Enumerable),
+                #endregion
+            });
+            if (this.externals.ContainsKey("__imports"))
+            {
+                foreach (Type t in (IEnumerable<Type>) this.externals["__imports"])
+                {
+                    imports.Add(t);
+                }
+            }
+            this.predefinedTypes = imports;
+            symbols["__imports"] = this.predefinedTypes;
         }
 
         private void AddSymbol(String name, Object value)
@@ -1869,10 +1888,6 @@ namespace System.Linq.Dynamic
             Object value;
             if (keywords.TryGetValue(this.token.text, out value))
             {
-                if (value is Type)
-                {
-                    return this.ParseTypeAccess((Type) value);
-                }
                 if (value == (Object) keywordIt)
                 {
                     return this.ParseIt();
@@ -1887,6 +1902,10 @@ namespace System.Linq.Dynamic
                 }
                 this.NextToken();
                 return (Expression) value;
+            }
+            else if ((value = this.predefinedTypes.SingleOrDefault(t => t.Name == this.token.text)) != null)
+            {
+                return this.ParseTypeAccess((Type) value);
             }
             if (this.symbols.TryGetValue(this.token.text, out value) ||
                 this.externals != null && this.externals.TryGetValue(this.token.text, out value))
@@ -2112,7 +2131,7 @@ namespace System.Linq.Dynamic
                             id, GetTypeName(type));
                     case 1:
                         MethodInfo method = (MethodInfo) mb;
-                        if (!IsPredefinedType(method.DeclaringType))
+                        if (!this.IsPredefinedType(method.DeclaringType))
                         {
                             throw this.ParseError(errorPos, Res.MethodsAreInaccessible, GetTypeName(method.DeclaringType));
                         }
@@ -2227,9 +2246,9 @@ namespace System.Linq.Dynamic
             }
         }
 
-        private static Boolean IsPredefinedType(Type type)
+        private Boolean IsPredefinedType(Type type)
         {
-            return predefinedTypes.Any(t => t == type);
+            return this.predefinedTypes.Contains(type);
         }
 
         private static Boolean IsNullableType(Type type)
@@ -2365,7 +2384,7 @@ namespace System.Linq.Dynamic
             }
             if (!(instance == null || searchExtensionMethods))
             {
-                foreach (Type t in predefinedTypes.Where(t => Attribute.IsDefined(t, typeof(ExtensionAttribute))))
+                foreach (Type t in this.predefinedTypes.Where(t => Attribute.IsDefined(t, typeof(ExtensionAttribute))))
                 {
                     int count = this.FindMethod(t, methodName, null, new Expression[] { instance, }.Concat(args).ToArray(), true, out method);
                     if (count != 0)
@@ -3162,7 +3181,7 @@ namespace System.Linq.Dynamic
                     t = TokenId.StringLiteral;
                     break;
                 default:
-                    if (Char.IsLetter(this.ch) || this.ch == '@' || this.ch == '_')
+                    if (Char.IsLetter(this.ch) || this.ch == '@' || this.ch == '_' || this.ch == '$')
                     {
                         do
                         {
@@ -3277,10 +3296,6 @@ namespace System.Linq.Dynamic
                 {keywordIif, keywordIif},
                 {keywordNew, keywordNew},
             };
-            foreach (Type type in predefinedTypes)
-            {
-                d.Add(type.Name, type);
-            }
             return d;
         }
     }
@@ -3290,7 +3305,6 @@ namespace System.Linq.Dynamic
         public const String DuplicateIdentifier = "The identifier '{0}' was defined more than once";
         public const String ExpressionTypeMismatch = "Expression of type '{0}' expected";
         public const String ExpressionExpected = "Expression expected";
-        public const String InvalidCharacterLiteral = "Character literal must contain exactly one character";
         public const String InvalidIntegerLiteral = "Invalid integer literal '{0}'";
         public const String InvalidRealLiteral = "Invalid real literal '{0}'";
         public const String UnknownIdentifier = "Unknown identifier '{0}'";
