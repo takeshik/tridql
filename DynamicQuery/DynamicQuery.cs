@@ -1249,7 +1249,8 @@ namespace System.Linq.Dynamic
             LessGreater,
             DoubleEqual,
             GreaterThanEqual,
-            DoubleBar
+            DoubleBar,
+            Semicolon,
         }
 
         private interface ILogicalSignatures
@@ -1514,8 +1515,27 @@ namespace System.Linq.Dynamic
             #pragma warning restore 0219
         }
 
-        // ?: operator
+        // ; operator
         private Expression ParseExpression()
+        {
+            Expression left = this.ParseConditional();
+            while (this.token.id == TokenId.Semicolon)
+            {
+                this.NextToken();
+                Expression right = this.ParseConditional();
+                left = Expression.Block(
+                    right.Type,
+                    null,
+                    left is BlockExpression
+                        ? ((BlockExpression) left).Expressions.Concat(new Expression[] { right, })
+                        : new Expression[] { left, right, }
+                );
+            }
+            return left;
+        }
+
+        // ?: operator
+        private Expression ParseConditional()
         {
             Int32 errorPos = this.token.pos;
             Expression expr = this.ParseLogicalOr();
@@ -3096,6 +3116,10 @@ namespace System.Linq.Dynamic
                 case ':':
                     this.NextChar();
                     t = TokenId.Colon;
+                    break;
+                case ';':
+                    this.NextChar();
+                    t = TokenId.Semicolon;
                     break;
                 case '<':
                     this.NextChar();
