@@ -1347,7 +1347,7 @@ namespace System.Linq.Dynamic
         private static Dictionary<String, Object> keywords;
 
         private readonly Dictionary<String, Object> symbols;
-        private IDictionary<String, Object> externals;
+        // // // private IDictionary<String, Object> externals;
         private readonly Dictionary<Expression, String> literals;
         private ParameterExpression it;
         private readonly String text;
@@ -1376,6 +1376,9 @@ namespace System.Linq.Dynamic
             {
                 this.ProcessValues(values);
             }
+
+            this.symbols.Add("$", this.symbols);
+
             this.text = expression;
             this.textLen = this.text.Length;
             this.SetTextPos(0);
@@ -1388,7 +1391,7 @@ namespace System.Linq.Dynamic
             {
                 if (!String.IsNullOrEmpty(pe.Name))
                 {
-                    this.AddSymbol(pe.Name, pe);
+                    this.symbols.Add(pe.Name, pe);
                 }
             }
             if (parameters.Length == 1 && String.IsNullOrEmpty(parameters[0].Name))
@@ -1404,18 +1407,15 @@ namespace System.Linq.Dynamic
                 Object value = values[i];
                 if (i == values.Length - 1 && value is IDictionary<String, Object>)
                 {
-                    this.externals = (IDictionary<String, Object>) value;
+                    foreach(KeyValuePair<String, Object> e in (IDictionary<String, Object>) value)
+                    {
+                        this.symbols.Add(e.Key, e.Value);
+                    }
                 }
                 else
                 {
-                    this.AddSymbol("@" + i.ToString(CultureInfo.InvariantCulture), value);
+                    this.symbols.Add("@" + i.ToString(CultureInfo.InvariantCulture), value);
                 }
-            }
-
-            this.AddSymbol("$", this.externals);
-            if (this.externals == null)
-            {
-                this.externals = new Dictionary<String, Object>();
             }
 
             HashSet<Type> imports = new HashSet<Type>(new Type[]
@@ -1448,24 +1448,15 @@ namespace System.Linq.Dynamic
                 typeof(Enumerable),
                 #endregion
             });
-            if (this.externals.ContainsKey("__imports"))
+            if (this.symbols.ContainsKey("$imports"))
             {
-                foreach (Type t in (IEnumerable<Type>) this.externals["__imports"])
+                foreach (Type t in (IEnumerable<Type>) this.symbols["$imports"])
                 {
                     imports.Add(t);
                 }
             }
             this.predefinedTypes = imports;
-            symbols["__imports"] = this.predefinedTypes;
-        }
-
-        private void AddSymbol(String name, Object value)
-        {
-            if (this.symbols.ContainsKey(name))
-            {
-                throw this.ParseError(Res.DuplicateIdentifier, name);
-            }
-            this.symbols.Add(name, value);
+            this.symbols["$imports"] = this.predefinedTypes;
         }
 
         public Expression Parse(Type resultType)
@@ -1927,8 +1918,7 @@ namespace System.Linq.Dynamic
             {
                 return this.ParseTypeAccess((Type) value);
             }
-            if (this.symbols.TryGetValue(this.token.text, out value) ||
-                this.externals != null && this.externals.TryGetValue(this.token.text, out value))
+            if (this.symbols.TryGetValue(this.token.text, out value))
             {
                 Expression expr = value as Expression;
                 if (expr == null)
