@@ -1251,6 +1251,7 @@ namespace System.Linq.Dynamic
             GreaterThanEqual,
             DoubleBar,
             Semicolon,
+            ColonEqual,
         }
 
         private interface ILogicalSignatures
@@ -1509,18 +1510,36 @@ namespace System.Linq.Dynamic
         // ; operator
         private Expression ParseExpression()
         {
-            Expression left = this.ParseConditional();
+            Expression left = this.ParseAssign();
             while (this.token.id == TokenId.Semicolon)
             {
                 this.NextToken();
-                Expression right = this.ParseConditional();
+                Expression right = this.ParseAssign();
                 left = Expression.Block(
                     right.Type,
-                    null,
+                    this.symbols.Values.OfType<ParameterExpression>(),
                     left is BlockExpression
                         ? ((BlockExpression) left).Expressions.Concat(new Expression[] { right, })
                         : new Expression[] { left, right, }
                 );
+            }
+            return left;
+        }
+
+        // := operator
+        private Expression ParseAssign()
+        {
+            Expression left = this.ParseConditional();
+            while (this.token.id == TokenId.ColonEqual)
+            {
+                this.NextToken();
+                Expression right = this.ParseConditional();
+                if (left is MethodCallExpression)
+                {
+                    MethodCallExpression e = (MethodCallExpression) left;
+                    left = Expression.Property(e.Object, e.Method.Name.Substring(4), e.Arguments.ToArray());
+                }
+                left = Expression.Assign(left, right);
             }
             return left;
         }
@@ -2165,7 +2184,7 @@ namespace System.Linq.Dynamic
                             }
                         }
                         ParameterInfo[] parameters = method.GetParameters();
-                        if (Attribute.IsDefined(parameters.Last(), typeof(ParamArrayAttribute)) &&
+                        if (parameters.Any() && Attribute.IsDefined(parameters.Last(), typeof(ParamArrayAttribute)) &&
                             parameters.Length != args.Length
                         )
                         {
@@ -2549,7 +2568,7 @@ namespace System.Linq.Dynamic
 
         private static Boolean HasVarArgsParameter(MethodData method)
         {
-            return Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute));
+            return method.Parameters.Any() && Attribute.IsDefined(method.Parameters.Last(), typeof(ParamArrayAttribute));
         }
 
         private Expression PromoteExpression(Expression expr, Type type, Boolean exact)
@@ -3105,7 +3124,16 @@ namespace System.Linq.Dynamic
                     break;
                 case ':':
                     this.NextChar();
-                    t = TokenId.Colon;
+                    switch (this.ch)
+                    {
+                        case '=':
+                            this.NextChar();
+                            t = TokenId.ColonEqual;
+                            break;
+                        default:
+                            t = TokenId.Colon;
+                            break;
+                    }
                     break;
                 case ';':
                     this.NextChar();
