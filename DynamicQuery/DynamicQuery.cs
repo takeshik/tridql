@@ -1379,6 +1379,11 @@ namespace System.Linq.Dynamic
             }
 
             this.symbols.Add("$", this.symbols);
+            this.symbols.Add("$type", ((Expression<Func<String, Type>>) (s =>
+                AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType(s))
+                    .FirstOrDefault(t => t != null)
+            )));
 
             this.text = expression;
             this.textLen = this.text.Length;
@@ -1955,11 +1960,20 @@ namespace System.Linq.Dynamic
                 this.NextToken();
                 return expr;
             }
-            if (this.it != null)
+            else if (this.it.Type.GetMember(this.token.text, BindingFlags.Public | BindingFlags.Instance).Any())
             {
                 return this.ParseMemberAccess(null, this.it);
             }
-            throw this.ParseError(Res.UnknownIdentifier, this.token.text);
+            else
+            {
+                var expr = Expression.Property(
+                    Expression.Constant(this.symbols),
+                    "Item",
+                    Expression.Constant(this.token.text)
+                );
+                this.NextToken();
+                return expr;
+            }
         }
 
         private Expression ParseIt()
@@ -2160,15 +2174,6 @@ namespace System.Linq.Dynamic
                             id, GetTypeName(type));
                     case 1:
                         MethodInfo method = (MethodInfo) mb;
-                        if (!this.IsPredefinedType(method.DeclaringType))
-                        {
-                            throw this.ParseError(errorPos, Res.MethodsAreInaccessible, GetTypeName(method.DeclaringType));
-                        }
-                        if (method.ReturnType == typeof(void))
-                        {
-                            throw this.ParseError(errorPos, Res.MethodIsVoid,
-                                id, GetTypeName(method.DeclaringType));
-                        }
                         if (method.IsGenericMethodDefinition)
                         {
                             Type thisArgType = method.GetParameters().First().ParameterType;
@@ -2273,11 +2278,6 @@ namespace System.Linq.Dynamic
                     throw this.ParseError(errorPos, Res.AmbiguousIndexerInvocation,
                                      GetTypeName(expr.Type));
             }
-        }
-
-        private Boolean IsPredefinedType(Type type)
-        {
-            return this.predefinedTypes.Contains(type);
         }
 
         private static Boolean IsNullableType(Type type)
@@ -3362,8 +3362,6 @@ namespace System.Linq.Dynamic
         public const String AmbiguousConstructorInvocation = "Ambiguous invocation of '{0}' constructor";
         public const String CannotConvertValue = "A value of type '{0}' cannot be converted to type '{1}'";
         public const String NoApplicableMethod = "No applicable method '{0}' exists in type '{1}'";
-        public const String MethodsAreInaccessible = "Methods on type '{0}' are not accessible";
-        public const String MethodIsVoid = "Method '{0}' in type '{1}' does not return a value";
         public const String AmbiguousMethodInvocation = "Ambiguous invocation of method '{0}' in type '{1}'";
         public const String UnknownPropertyOrField = "No property or field '{0}' exists in type '{1}'";
         public const String NoApplicableAggregate = "No applicable aggregate method '{0}' exists";
