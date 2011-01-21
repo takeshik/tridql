@@ -17,7 +17,7 @@ namespace System.Linq.Dynamic
 {
     public static class DynamicQueryable
     {
-        public static IQueryable Execute(this IQueryable source, String func, params Object[] values)
+        public static IQueryable Query(this IQueryable source, String func, params Object[] values)
         {
             return Execute<IQueryable>(source, func, values);
         }
@@ -1348,7 +1348,7 @@ namespace System.Linq.Dynamic
         private static Dictionary<String, Object> keywords;
 
         private readonly Dictionary<String, Object> symbols;
-        // // // private IDictionary<String, Object> externals;
+        private readonly Dictionary<String, Object> statics;
         private readonly Dictionary<Expression, String> literals;
         private ParameterExpression it;
         private readonly String text;
@@ -1368,6 +1368,7 @@ namespace System.Linq.Dynamic
                 keywords = CreateKeywords();
             }
             this.symbols = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
+            this.statics = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
             this.literals = new Dictionary<Expression, String>();
             if (parameters != null)
             {
@@ -1381,10 +1382,25 @@ namespace System.Linq.Dynamic
             this.symbols.Add("$", this.symbols);
             this.symbols.Add("$type", ((Expression<Func<String, Type>>) (s =>
                 AppDomain.CurrentDomain.GetAssemblies()
-                    .Select(a => a.GetType(s))
-                    .FirstOrDefault(t => t != null)
+                    .Select(_ => _.GetType(s))
+                    .FirstOrDefault(_ => _ != null)
             )));
 
+            this.statics.Add("#var", ((Action<String, String>) ((s, t) =>
+                this.symbols.Add(s, Expression.Variable(
+                    AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(_ => _.GetType(t))
+                        .FirstOrDefault(_ => _ != null),
+                    s
+                ))
+            )));
+            this.statics.Add("#import", ((Action<String>) (t =>
+                this.predefinedTypes.Add(
+                    AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(_ => _.GetType(t))
+                        .FirstOrDefault(_ => _ != null)
+                ))
+            ));
             this.text = expression;
             this.textLen = this.text.Length;
             this.SetTextPos(0);
@@ -1454,15 +1470,14 @@ namespace System.Linq.Dynamic
                 typeof(Enumerable),
                 #endregion
             });
-            if (this.symbols.ContainsKey("$imports"))
+            if (this.symbols.ContainsKey("#imports"))
             {
-                foreach (Type t in (IEnumerable<Type>) this.symbols["$imports"])
+                foreach (Type t in (IEnumerable<Type>) this.symbols["#imports"])
                 {
                     imports.Add(t);
                 }
             }
             this.predefinedTypes = imports;
-            this.symbols["$imports"] = this.predefinedTypes;
         }
 
         public Expression Parse(Type resultType)
@@ -1921,6 +1936,19 @@ namespace System.Linq.Dynamic
         {
             this.ValidateToken(TokenId.Identifier);
             Object value;
+            if (this.token.text.StartsWith("#"))
+            {
+                value = this.statics[this.token.text];
+                this.NextToken();
+                return Expression.Constant(value is Delegate
+                    ? ((Delegate) value).DynamicInvoke(this.ParseArgumentList()
+                          .Cast<ConstantExpression>()
+                          .Select(e => e.Value)
+                          .ToArray()
+                      )
+                    : value
+                );
+            }
             if (keywords.TryGetValue(this.token.text, out value))
             {
                 if (value == (Object) keywordIt)
@@ -3223,7 +3251,7 @@ namespace System.Linq.Dynamic
                     t = TokenId.StringLiteral;
                     break;
                 default:
-                    if (Char.IsLetter(this.ch) || this.ch == '@' || this.ch == '_' || this.ch == '$')
+                    if (Char.IsLetter(this.ch) || this.ch == '@' || this.ch == '_' || this.ch == '$' || this.ch == '#')
                     {
                         do
                         {
