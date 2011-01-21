@@ -8,13 +8,11 @@
  * This library is licensed under the Microsoft Public License (Ms-PL).
  */
 
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -980,6 +978,11 @@ namespace System.Linq.Dynamic
             return new ExpressionParser(null, expression, values).Parse(resultType);
         }
 
+        public static LambdaExpression ParseLambda(Type resultType, String expression, params Object[] values)
+        {
+            return ParseLambda(new ParameterExpression[0], resultType, expression, values);
+        }
+
         public static LambdaExpression ParseLambda(Type itType, Type resultType, String expression, params Object[] values)
         {
             return ParseLambda(new ParameterExpression[] { Expression.Parameter(itType, ""), }, resultType, expression, values);
@@ -988,6 +991,11 @@ namespace System.Linq.Dynamic
         public static LambdaExpression ParseLambda(ParameterExpression[] parameters, Type resultType, String expression, params Object[] values)
         {
             return Expression.Lambda(new ExpressionParser(parameters, expression, values).Parse(resultType), parameters);
+        }
+
+        public static Expression<Func<TReturn>> ParseLambda<TReturn>(String expression, params Object[] values)
+        {
+            return (Expression<Func<TReturn>>) ParseLambda(typeof(TReturn), expression, values);
         }
 
         public static Expression<Func<T, TReturn>> ParseLambda<T, TReturn>(String expression, params Object[] values)
