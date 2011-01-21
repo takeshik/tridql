@@ -35,6 +35,15 @@ namespace System.Linq.Dynamic
             return DynamicExpressions.ParseLambda<IQueryable, T>(func, values).Compile()(source);
         }
 
+        public static void Run(this IQueryable source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+            source.Cast<Object>().ToArray();
+        }
+
         public static Object Aggregate(this IQueryable source, String func, params Object[] values)
         {
             if (source == null)
