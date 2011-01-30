@@ -1,37 +1,50 @@
-h2. (Forked) DynamicQuery
+h2. TriDQL - Dynamic Dramatic Drastic Querying Language
 
 Copyright © 2011 Takeshi KIRIYA (aka takeshik), All rights reserved.
-This code is originally written by Microsoft Corporation.
+TriDQL is a fork of DynamicQuery, originally written by Microsoft Corporation.
 
-DynamicQuery, originally a sample code from Microsoft, is a library to do LINQ
+TriDQL, originally a sample code from Microsoft, is a mini-language library to do LINQ
 operations and to construct expression trees with string.
 You can download original DynamicQuery source code and document from:
 
 http://code.msdn.microsoft.com/cs2008samples
-
-This is forked version of DynamicQuery.
 
 h3. Samples
 
 Below three expressions are the same meanings.
 
 <pre>
-// DynamicQuery (Execute method)
+// DynamicQuery (Query method: IQueryable -> IQueryable)
 Enumerable.Range(0, 100).AsQueryable()
-    .Execute("it.Zip(Enumerable.Range(0, 100).Reverse(), 'x * y').Distinct(). OrderBy('it desc')");
+	.Query("it.Zip(Enumerable.Range(0, 100).Reverse(), 'x * y').Distinct(). OrderBy('it desc')");
 
 // DynamicQuery (Query operators)
 Enumerable.Range(0, 100).AsQueryable()
-    .Zip(Enumerable.Range(0, 100).Reverse(), "x + y")
-    .Distinct()
-    .OrderBy("it desc");
+	.Zip(Enumerable.Range(0, 100).Reverse(), "x + y")
+	.Distinct()
+	.OrderBy("it desc");
 
 // Normal LINQ code
-Enumerable.Range(0, 100)
-    .Zip(Enumerable.Range(0, 100), (x, y) => x * y)
-    .Reverse()
-    .Distinct()
-    .OrderByDescending(n => n);
+Enumerable.Range(0, 100).AsQueryable()
+	.Zip(Enumerable.Range(0, 100), (x, y) => x * y)
+	.Reverse()
+	.Distinct()
+	.OrderByDescending(n => n);
+</pre>
+
+And also, you can use this as a language!
+
+<pre>
+#import("System.Console");
+#var("x", "System.Int32");
+#var("e", "System.Linq.IQueryable");
+x := Int32.Parse(Console.ReadLine());
+e := Enumerable.Range(0, x).AsQueryable();
+#var("q", "System.String");
+q := Console.ReadLine();
+e.Query(q).Select(
+	"#import("System.Console"); Console.WriteLine(Int32(it)); 0"
+).Run()
 </pre>
 
 h3. Added Features
@@ -42,8 +55,8 @@ h3. Added Features
 * Add predefined types (Regex, Enumerable, etc.).
 * Expand the expression of string literals, you can describe strings like @'this is string'@.
 Character literals are still describable, if inner text in @'...'@ is only one character.
-* Rename @DynamicExpression@ class to @DynamicExpressions@, since it conflicts with
-@System.Linq.Expressions.DynamicExpression@.
+* Add operators: Assign (@:=@) and Block (@;@).
+* Add some "eval-time" functions starts with @#@, import types and declare variables.
 
 h3. Removed Features
 
@@ -55,6 +68,8 @@ h3. Planning Features
 * Add Utility methods (Construct arrays, type objects, lambdas, etc., in code string).
 * Extend language features.
 * Support @dynamic@ objects.
+* Support comments.
+* Support to run on Mono.
 * And so on.
 
 h3. Licensing

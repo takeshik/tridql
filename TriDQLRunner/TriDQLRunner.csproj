@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{C2201975-B41E-46F3-BC9B-4B74BE49A742}</ProjectGuid>
+    <ProjectGuid>{08238E1F-BA92-4471-978C-0DFAF1EEC814}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DynamicQueryRunner</RootNamespace>
-    <AssemblyName>DynamicQueryRunner</AssemblyName>
+    <RootNamespace>XSpect.TriDQL.Runner</RootNamespace>
+    <AssemblyName>TriDQLRunner</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -34,20 +34,20 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\DynamicQuery\DynamicQuery.csproj">
-      <Project>{AB086695-AAC0-428C-AC35-A6DC28A578D9}</Project>
-      <Name>DynamicQuery</Name>
+    <ProjectReference Include="..\TriDQL\TriDQL.csproj">
+      <Project>{5C9C931F-9C11-4B4D-84B0-705403C7993B}</Project>
+      <Name>TriDQL</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

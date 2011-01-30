@@ -1,16 +1,18 @@
 ﻿// -*- mode: csharp; encoding: utf-8; tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 // vim:set ft=cs fenc=utf-8 ts=4 sw=4 sts=4 et:
 // $Id$
-/* DynamicQuery - Expression Tree Generating Language
- * Originally created by Microsoft Corporation.
+/* TriDQL - Expression Tree Generating Language
  * Copyright © 2011 Takeshi KIRIYA (aka takeshik) <takeshik@users.sf.net>
+ * TriDQL is fork of DynamicQuery, originally created by Microsoft Corporation.
  * 
  * This library is licensed under the Microsoft Public License (Ms-PL).
  */
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Linq.Expressions;
@@ -19,7 +21,7 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace System.Linq.Dynamic
+namespace XSpect.TriDQL
 {
     public static class DynamicQueryable
     {
@@ -38,7 +40,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("func");
             }
-            return DynamicExpressions.ParseLambda<IQueryable, T>(func, values).Compile()(source);
+            return TriDQL.ParseLambda<IQueryable, T>(func, values).Compile()(source);
         }
 
         public static void Run(this IQueryable source)
@@ -60,7 +62,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("func");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(new ParameterExpression[]
+            LambdaExpression lambda = TriDQL.ParseLambda(new ParameterExpression[]
             {
                 Expression.Parameter(source.ElementType, "a"),
                 Expression.Parameter(source.ElementType, "e"),
@@ -98,7 +100,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute<Boolean>(
                 Expression.Call(
                     typeof(Queryable), "Any",
@@ -132,7 +134,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute<Boolean>(
                 Expression.Call(
                     typeof(Queryable), "All",
@@ -209,7 +211,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute<Int32>(
                 Expression.Call(
                     typeof(Queryable), "Count",
@@ -337,7 +339,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "First",
@@ -371,7 +373,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "FirstOrDefault",
@@ -395,8 +397,8 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("elementSelector");
             }
-            LambdaExpression keyLambda = DynamicExpressions.ParseLambda(source.ElementType, null, keySelector, values);
-            LambdaExpression elementLambda = DynamicExpressions.ParseLambda(source.ElementType, null, elementSelector, values);
+            LambdaExpression keyLambda = TriDQL.ParseLambda(source.ElementType, null, keySelector, values);
+            LambdaExpression elementLambda = TriDQL.ParseLambda(source.ElementType, null, elementSelector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "GroupBy",
@@ -449,7 +451,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "Last",
@@ -483,7 +485,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "LastOrDefault",
@@ -517,7 +519,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute<Int64>(
                 Expression.Call(
                     typeof(Queryable), "LongCount",
@@ -551,7 +553,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("selector");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "Max",
@@ -585,7 +587,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("selector");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "Min",
@@ -659,7 +661,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("selector");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "Select",
@@ -679,7 +681,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("selector");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, null, selector, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, null, selector, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "SelectMany",
@@ -732,7 +734,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "Single",
@@ -766,7 +768,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.Execute(
                 Expression.Call(
                     typeof(Queryable), "SingleOrDefault",
@@ -801,7 +803,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "SkipWhile",
@@ -838,7 +840,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "TakeWhile",
@@ -882,7 +884,7 @@ namespace System.Linq.Dynamic
             {
                 throw new ArgumentNullException("predicate");
             }
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
+            LambdaExpression lambda = TriDQL.ParseLambda(source.ElementType, typeof(Boolean), predicate, values);
             return source.Provider.CreateQuery(
                 Expression.Call(
                     typeof(Queryable), "Where",
@@ -907,7 +909,7 @@ namespace System.Linq.Dynamic
                 throw new ArgumentNullException("selector");
             }
             Type source2ElementType = source2.GetType().GetInterface("IEnumerable`1").GetGenericArguments().Single();
-            LambdaExpression lambda = DynamicExpressions.ParseLambda(new ParameterExpression[]
+            LambdaExpression lambda = TriDQL.ParseLambda(new ParameterExpression[]
             {
                 Expression.Parameter(source1.ElementType, "x"),
                 Expression.Parameter(source2ElementType, "y"),
@@ -971,7 +973,7 @@ namespace System.Linq.Dynamic
         }
     }
 
-    public static class DynamicExpressions
+    public static class TriDQL
     {
         public static Expression Parse(Type resultType, String expression, params Object[] values)
         {
@@ -1226,7 +1228,7 @@ namespace System.Linq.Dynamic
 
         public override String ToString()
         {
-            return String.Format(Res.ParseExceptionFormat, this.Message, this.Position);
+            return String.Format(ExpressionParser.Res.ParseExceptionFormat, this.Message, this.Position);
         }
     }
 
@@ -1358,6 +1360,51 @@ namespace System.Linq.Dynamic
             void F(Nullable<Boolean> x);
         }
 
+        internal static class Res
+        {
+            internal const String DuplicateIdentifier = "The identifier '{0}' was defined more than once";
+            internal const String ExpressionTypeMismatch = "Expression of type '{0}' expected";
+            internal const String ExpressionExpected = "Expression expected";
+            internal const String InvalidIntegerLiteral = "Invalid integer literal '{0}'";
+            internal const String InvalidRealLiteral = "Invalid real literal '{0}'";
+            internal const String UnknownIdentifier = "Unknown identifier '{0}'";
+            internal const String NoItInScope = "No 'it' is in scope";
+            internal const String IifRequiresThreeArgs = "The 'iif' function requires three arguments";
+            internal const String FirstExprMustBeBool = "The first expression must be of type 'Boolean'";
+            internal const String BothTypesConvertToOther = "Both of the types '{0}' and '{1}' convert to the other";
+            internal const String NeitherTypeConvertsToOther = "Neither of the types '{0}' and '{1}' converts to the other";
+            internal const String MissingAsClause = "Expression is missing an 'as' clause";
+            internal const String ArgsIncompatibleWithLambda = "Argument list incompatible with lambda expression";
+            internal const String TypeHasNoNullableForm = "Type '{0}' has no nullable form";
+            internal const String NoMatchingConstructor = "No matching constructor in type '{0}'";
+            internal const String AmbiguousConstructorInvocation = "Ambiguous invocation of '{0}' constructor";
+            internal const String CannotConvertValue = "A value of type '{0}' cannot be converted to type '{1}'";
+            internal const String NoApplicableMethod = "No applicable method '{0}' exists in type '{1}'";
+            internal const String AmbiguousMethodInvocation = "Ambiguous invocation of method '{0}' in type '{1}'";
+            internal const String UnknownPropertyOrField = "No property or field '{0}' exists in type '{1}'";
+            internal const String NoApplicableAggregate = "No applicable aggregate method '{0}' exists";
+            internal const String CannotIndexMultiDimArray = "Indexing of multi-dimensional arrays is not supported";
+            internal const String InvalidIndex = "Array index must be an integer expression";
+            internal const String NoApplicableIndexer = "No applicable indexer exists in type '{0}'";
+            internal const String AmbiguousIndexerInvocation = "Ambiguous invocation of indexer in type '{0}'";
+            internal const String IncompatibleOperand = "Operator '{0}' incompatible with operand type '{1}'";
+            internal const String IncompatibleOperands = "Operator '{0}' incompatible with operand types '{1}' and '{2}'";
+            internal const String UnterminatedStringLiteral = "Unterminated String literal";
+            internal const String InvalidCharacter = "Syntax error '{0}'";
+            internal const String DigitExpected = "Digit expected";
+            internal const String SyntaxError = "Syntax error";
+            internal const String TokenExpected = "{0} expected";
+            internal const String ParseExceptionFormat = "{0} (at index {1})";
+            internal const String ColonExpected = "':' expected";
+            internal const String OpenParenExpected = "'(' expected";
+            internal const String CloseParenOrOperatorExpected = "')' or operator expected";
+            internal const String CloseParenOrCommaExpected = "')' or ',' expected";
+            internal const String DotOrOpenParenExpected = "'.' or '(' expected";
+            internal const String OpenBracketExpected = "'[' expected";
+            internal const String CloseBracketOrCommaExpected = "']' or ',' expected";
+            internal const String IdentifierExpected = "Identifier expected";
+        }
+
         #endregion
 
         private HashSet<Type> predefinedTypes;
@@ -1454,7 +1501,7 @@ namespace System.Linq.Dynamic
                 Object value = values[i];
                 if (i == values.Length - 1 && value is IDictionary<String, Object>)
                 {
-                    foreach(KeyValuePair<String, Object> e in (IDictionary<String, Object>) value)
+                    foreach (KeyValuePair<String, Object> e in (IDictionary<String, Object>) value)
                     {
                         this.symbols.Add(e.Key, e.Value);
                     }
@@ -1519,7 +1566,7 @@ namespace System.Linq.Dynamic
 
         public IEnumerable<DynamicOrdering> ParseOrdering()
         {
-            #pragma warning disable 0219
+#pragma warning disable 0219
 
             List<DynamicOrdering> orderings = new List<DynamicOrdering>();
             while (true)
@@ -1549,7 +1596,7 @@ namespace System.Linq.Dynamic
             this.ValidateToken(TokenId.End, Res.SyntaxError);
             return orderings;
 
-            #pragma warning restore 0219
+#pragma warning restore 0219
         }
 
         // ; operator
@@ -2120,7 +2167,7 @@ namespace System.Linq.Dynamic
             }
             this.ValidateToken(TokenId.CloseParen, Res.CloseParenOrCommaExpected);
             this.NextToken();
-            Type type = DynamicExpressions.CreateClass(properties);
+            Type type = TriDQL.CreateClass(properties);
             MemberBinding[] bindings = new MemberBinding[properties.Count];
             for (Int32 i = 0; i < bindings.Length; i++)
             {
@@ -3393,50 +3440,5 @@ namespace System.Linq.Dynamic
             };
             return d;
         }
-    }
-
-    internal static class Res
-    {
-        public const String DuplicateIdentifier = "The identifier '{0}' was defined more than once";
-        public const String ExpressionTypeMismatch = "Expression of type '{0}' expected";
-        public const String ExpressionExpected = "Expression expected";
-        public const String InvalidIntegerLiteral = "Invalid integer literal '{0}'";
-        public const String InvalidRealLiteral = "Invalid real literal '{0}'";
-        public const String UnknownIdentifier = "Unknown identifier '{0}'";
-        public const String NoItInScope = "No 'it' is in scope";
-        public const String IifRequiresThreeArgs = "The 'iif' function requires three arguments";
-        public const String FirstExprMustBeBool = "The first expression must be of type 'Boolean'";
-        public const String BothTypesConvertToOther = "Both of the types '{0}' and '{1}' convert to the other";
-        public const String NeitherTypeConvertsToOther = "Neither of the types '{0}' and '{1}' converts to the other";
-        public const String MissingAsClause = "Expression is missing an 'as' clause";
-        public const String ArgsIncompatibleWithLambda = "Argument list incompatible with lambda expression";
-        public const String TypeHasNoNullableForm = "Type '{0}' has no nullable form";
-        public const String NoMatchingConstructor = "No matching constructor in type '{0}'";
-        public const String AmbiguousConstructorInvocation = "Ambiguous invocation of '{0}' constructor";
-        public const String CannotConvertValue = "A value of type '{0}' cannot be converted to type '{1}'";
-        public const String NoApplicableMethod = "No applicable method '{0}' exists in type '{1}'";
-        public const String AmbiguousMethodInvocation = "Ambiguous invocation of method '{0}' in type '{1}'";
-        public const String UnknownPropertyOrField = "No property or field '{0}' exists in type '{1}'";
-        public const String NoApplicableAggregate = "No applicable aggregate method '{0}' exists";
-        public const String CannotIndexMultiDimArray = "Indexing of multi-dimensional arrays is not supported";
-        public const String InvalidIndex = "Array index must be an integer expression";
-        public const String NoApplicableIndexer = "No applicable indexer exists in type '{0}'";
-        public const String AmbiguousIndexerInvocation = "Ambiguous invocation of indexer in type '{0}'";
-        public const String IncompatibleOperand = "Operator '{0}' incompatible with operand type '{1}'";
-        public const String IncompatibleOperands = "Operator '{0}' incompatible with operand types '{1}' and '{2}'";
-        public const String UnterminatedStringLiteral = "Unterminated String literal";
-        public const String InvalidCharacter = "Syntax error '{0}'";
-        public const String DigitExpected = "Digit expected";
-        public const String SyntaxError = "Syntax error";
-        public const String TokenExpected = "{0} expected";
-        public const String ParseExceptionFormat = "{0} (at index {1})";
-        public const String ColonExpected = "':' expected";
-        public const String OpenParenExpected = "'(' expected";
-        public const String CloseParenOrOperatorExpected = "')' or operator expected";
-        public const String CloseParenOrCommaExpected = "')' or ',' expected";
-        public const String DotOrOpenParenExpected = "'.' or '(' expected";
-        public const String OpenBracketExpected = "'[' expected";
-        public const String CloseBracketOrCommaExpected = "']' or ',' expected";
-        public const String IdentifierExpected = "Identifier expected";
     }
 }
